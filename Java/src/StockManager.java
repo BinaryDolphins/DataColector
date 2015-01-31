@@ -18,8 +18,14 @@ public class StockManager {
 	
 	public void timeStepThing() {
 		while(true) {
+			updateDividends();
+			//Bid and get what to sell
+			//randomBidding(10, 5);
+			buyWithSlope(5);
+			
 			checkSubscriberData();
-			randomBidding(10, 5);
+			updateStockPrices();
+			
 			List<Integer> sales = trader.stockToSell(companies);
 			
 			for(int i = 0; i < sales.size(); i++) {
@@ -27,6 +33,7 @@ public class StockManager {
 				conn.askCompany(companies[companyIndex].getTicker(),
 						companies[companyIndex].getHighestBid().subtract(new BigDecimal("0.05")), 
 						trader.getStockCount(sales.get(i)));
+				System.out.println("ASKING " + companies[companyIndex].getTicker());
 			}
 			
 			try {
@@ -48,6 +55,16 @@ public class StockManager {
 		}
 	}
 	
+	public void buyWithSlope(int ammountStock) {
+		for(int i = 0; i < companies.length; i++) {
+			if(companies[i].getAskSlope().compareTo(new BigDecimal("0")) > 0) {
+				//System.out.println("BIDDING " + ammountStock + " SHARES FROM " + companies[i].getTicker());
+				conn.bidCompany(companies[i].getTicker(),
+						companies[i].getLowestAsk().add(new BigDecimal("0.05")), ammountStock);
+			}
+		}
+	}
+	
 	public void checkSubscriberData() {
 		String lastMessage = Subscriber.getLastMessage();
 		if(lastMessage != null) {
@@ -60,12 +77,23 @@ public class StockManager {
 						companyIdx = j;
 				}
 				if(tokenizedMessage[0].equals("BUY")) {
-					System.out.println("MSG 2: " + tokenizedMessage[2]);
-					trader.addSecurity(companyIdx, new BigDecimal(tokenizedMessage[2]), Long.parseLong(tokenizedMessage[3]));
+					if(Long.parseLong(tokenizedMessage[3]) != 0)
+						trader.addSecurity(companyIdx, new BigDecimal(tokenizedMessage[2]), Long.parseLong(tokenizedMessage[3]));
 				} else if(tokenizedMessage[0].equals("SELL")) {
-					trader.removeSecurity(companyIdx, Long.parseLong(tokenizedMessage[3]));
+					if(Long.parseLong(tokenizedMessage[3]) != 0)
+						trader.removeSecurity(companyIdx, Long.parseLong(tokenizedMessage[3]));
 				}
 			}
 		}
+	}
+	
+	public void updateDividends() {
+		BigDecimal[] dividends = conn.getMyDividends();
+		trader.updateDividends(dividends);
+	}
+	
+	public void updateStockPrices() {
+		companies = conn.updateCompanies(companies);
+		trader.setCash(conn.getCash());
 	}
 }

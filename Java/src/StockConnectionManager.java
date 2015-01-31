@@ -82,12 +82,12 @@ public class StockConnectionManager {
 	        String line;
 	        
 	        while((line = bin.readLine()) != null) {
-	        	System.out.println("Line: "+line);
 	        	text += line + "\n";
 	        }
 	
 	        pout.close();
 	        bin.close();
+	        socket.close();
 	        return text;
     	} catch(IOException e) {
     		System.err.println("I don't even know what I should do. FYI:");
@@ -100,7 +100,6 @@ public class StockConnectionManager {
 
     public BigDecimal getCash() {
     	String result = sendCommand(MY_CASH, null);
-    	System.out.println(result);
     	return new BigDecimal(result.trim().split(" ")[1]);
     }
 
@@ -121,22 +120,26 @@ public class StockConnectionManager {
     }
     
     // Uses securities to get most of a company's information (excluding ticker name)
-    public String[] getTickerInfo(String ticker)  {
-        String[] result = new String[3];
+    public String[] getTickerInfo()  {
     	String text = sendCommand(SECURITIES, null);
         text = text.trim();
         String[] tokens = text.split(" ");
-        int companyIndex = -1;
         
-        for(int i = 1; i < tokens.length && companyIndex == -1; i += 4) {
-        	if(tokens[i].equals(ticker))
+        return tokens;
+    }
+    
+    public String[] getCompanyFromTickerInfo(String[] tickerInfo, String ticker) {
+    	int companyIndex = -1;
+        String[] result = new String[3];
+        for(int i = 1; i < tickerInfo.length && companyIndex == -1; i += 4) {
+        	if(tickerInfo[i].equals(ticker))
         		companyIndex = i;
         }
         
         if(companyIndex != -1) {
-        	result[0] = tokens[companyIndex + 1];
-        	result[1] = tokens[companyIndex + 2];
-        	result[2] = tokens[companyIndex + 3];
+        	result[0] = tickerInfo[companyIndex + 1];
+        	result[1] = tickerInfo[companyIndex + 2];
+        	result[2] = tickerInfo[companyIndex + 3];
         	return result;
         }
         
@@ -146,12 +149,13 @@ public class StockConnectionManager {
     public String[] getOrderString(String ticker) {
     	String text = sendCommand(ORDERS, ticker);
     	String trimmedText = text.trim();
-    	return trimmedText.substring(trimmedText.indexOf(" ") + 1, trimmedText.length() - 1).split(" ");
+    	return trimmedText.substring(trimmedText.indexOf(" ") + 1, trimmedText.length()).split(" ");
     }
     
     public Company[] getCompanies()  {
     	String[] tickers = getTickers();
     	Company[] companies = new Company[tickers.length];
+    	String[] info = getTickerInfo();
     	
     	for(int i = 0; i < tickers.length; i++) {
         	//Get each company order information (ask and bid prices and stock count)
@@ -168,15 +172,65 @@ public class StockConnectionManager {
     		}
     		
     		//Get company info from securities command
-    		String[] info = getTickerInfo(tickers[i]);
-    		BigDecimal netWorth = new BigDecimal(info[0]);
-    		BigDecimal dividend = new BigDecimal(info[1]);
-    		BigDecimal volatility = new BigDecimal(info[2]);
+    		String[] companyInfo = getCompanyFromTickerInfo(info, tickers[i]);
+    		BigDecimal netWorth = new BigDecimal(companyInfo[0]);
+    		BigDecimal dividend = new BigDecimal(companyInfo[1]);
+    		BigDecimal volatility = new BigDecimal(companyInfo[2]);
     		
     		companies[i] = new Company(tickers[i], netWorth, dividend, volatility, bids, asks);
     	}
     	
     	return companies;
+    }
+    
+    public Company[] updateCompanies(Company[] companies) {
+    	String[] tickers = getTickers();
+    	String[] info = getTickerInfo();
+    	
+    	for(int i = 0; i < tickers.length; i++) {
+        	//Get each company order information (ask and bid prices and stock count)
+    		String[] order = getOrderString(tickers[i]);
+    		List<BidAsk> bids = new ArrayList<BidAsk>();
+    		List<BidAsk> asks = new ArrayList<BidAsk>();
+    		
+    		for(int j = 0; j < order.length / 4; j++) {
+    			if(order[4*j].equals("BID")) {
+        			BidAsk bidAsk = new BidAsk(new BigDecimal(order[4*j + 2]), Long.parseLong(order[4*j + 3]));
+    				bids.add(bidAsk);
+    			} else {
+        			BidAsk bidAsk = new BidAsk(new BigDecimal(order[4*j + 2]), Long.parseLong(order[4*j + 3]));
+    				asks.add(bidAsk);
+    			}
+    		}
+    		
+    		//Get company info from securities command
+    		String[] companyInfo = getCompanyFromTickerInfo(info, tickers[i]);
+    		BigDecimal netWorth = new BigDecimal(companyInfo[0]);
+    		BigDecimal dividend = new BigDecimal(companyInfo[1]);
+    		BigDecimal volatility = new BigDecimal(companyInfo[2]);
+    		
+    		companies[i].setNetWorth(netWorth);
+    		companies[i].setDividendRatio(dividend);
+    		companies[i].setVolatility(volatility);
+    		companies[i].setBids(bids);
+    		companies[i].setAsks(asks);
+    	}
+		
+		return companies;
+    }
+    
+    public BigDecimal[] getMyDividends() {
+    	BigDecimal[] result = new BigDecimal[10];
+    	
+    	String line = sendCommand(MY_SECURITIES, null);
+    	line = line.trim();
+    	line = line.substring(line.indexOf(" ") + 1, line.length());
+    	String[] tokens = line.split(" ");
+    	for(int i = 0; i < tokens.length; i += 3) {
+    		result[i / 3] = new BigDecimal(tokens[i + 2]);
+    	}
+    	
+    	return result;
     }
     
     public String bidCompany(String ticker, BigDecimal price, long stocks) {

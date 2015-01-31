@@ -9,6 +9,7 @@ public class Subscriber implements Runnable {
 	private String username, password;
 	private static PrintWriter pout;
 	private static BufferedReader bin;
+	private static Socket socket;
 	private static String lastMessage;
 	private static boolean close;
 	private Thread t;
@@ -22,7 +23,7 @@ public class Subscriber implements Runnable {
 	
 	public void open(String username, String password) {
 		try {
-	        Socket socket = new Socket(StockConnectionManager.SERVER, StockConnectionManager.SOCKET);
+	        socket = new Socket(StockConnectionManager.SERVER, StockConnectionManager.SOCKET);
 	        pout = new PrintWriter(socket.getOutputStream());
 	        bin = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 	        
@@ -37,7 +38,6 @@ public class Subscriber implements Runnable {
 	        	if(close) {
 	        		break;
 	        	}
-	        	System.out.println("SubLine: "+line);
 	        	lastMessage = (line == null ? line : (lastMessage + "\n" + line));
 	        }
 	        
@@ -77,7 +77,9 @@ public class Subscriber implements Runnable {
 		close = true;
 		
         pout.close();
+        
         try {
+            socket.close();
 			bin.close();
 		} catch (IOException e) {
     		System.err.println("The world probably just hates me at this point. FYI:");

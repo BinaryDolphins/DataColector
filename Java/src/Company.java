@@ -9,6 +9,8 @@ public class Company {
 	private BigDecimal volatility;
 	private List<BidAsk> bids;
 	private List<BidAsk> asks;
+	private BigDecimal prevLowestAsk;
+	private BigDecimal prevHighestBid;
 	
 	public Company(String ticker, BigDecimal netWorth, BigDecimal dividendRatio,
 			BigDecimal volatility, List<BidAsk> bids, List<BidAsk> asks) {
@@ -18,6 +20,8 @@ public class Company {
 		this.volatility = volatility;
 		this.bids = bids;
 		this.asks = asks;
+		this.prevLowestAsk = getLowestAsk();
+		this.prevHighestBid = getHighestBid();
 	}
 	
 	public String getTicker() { return ticker; }
@@ -30,8 +34,14 @@ public class Company {
 	public void setNetWorth(BigDecimal netWorth) { this.netWorth = netWorth; }
 	public void setDividendRatio(BigDecimal dividendRatio) { this.dividendRatio = dividendRatio; }
 	public void setVolatility(BigDecimal volatility) { this.volatility = volatility; }
-	public void setBids(List<BidAsk> bids) { this.bids = bids; }
-	public void setAsks(List<BidAsk> asks) { this.asks = asks; }
+	public void setBids(List<BidAsk> bids) {
+		this.prevHighestBid = getHighestBid();
+		this.bids = bids;
+	}
+	public void setAsks(List<BidAsk> asks) {
+		this.prevLowestAsk = getLowestAsk();
+		this.asks = asks;
+	}
 	
 	public BigDecimal getLowestAsk() {
 		BigDecimal result = asks.get(0).getPrice();
@@ -52,5 +62,16 @@ public class Company {
 		
 		return result;
 	}
+	
+	public BigDecimal getBidSlope() {
+		return getHighestBid().subtract(prevHighestBid);
+	}
+	public BigDecimal getAskSlope() {
+		return getLowestAsk().subtract(prevLowestAsk);
+	}
+	
+	/*public BigDecimal getScore() {
+		
+	}*/
 	
 }
