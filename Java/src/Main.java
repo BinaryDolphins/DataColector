@@ -1,8 +1,17 @@
+import javax.swing.SwingUtilities;
+
 
 public class Main {
 	public static void main(String[] args) 
     {
     	StockManager manager = new StockManager();
-    	manager.RandomBidding(20, 5);
+    	SwingUtilities.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				ButtonScreen screen = new ButtonScreen();
+				screen.setVisible(true);
+			}});
+    	
+    	manager.timeStepThing();
     }
 }

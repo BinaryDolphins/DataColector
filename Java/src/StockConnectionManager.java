@@ -52,14 +52,18 @@ public class StockConnectionManager {
      ************************* CODE ***********************
      ******************************************************/
 
-    private String username, password;
-    private static final String SERVER = "codebb.cloudapp.net";
-    private static final int SOCKET = 17429;
+    public String username, password;
+    public static final String SERVER = "codebb.cloudapp.net";
+    public static final int SOCKET = 17429;
+    
+    private Subscriber subscriber; 
 
 
     public StockConnectionManager(String username, String password)  {
         this.username = username;
         this.password = password;
+        this.subscriber = new Subscriber(username, password);
+        this.subscriber.start();
     }
 
     private String sendCommand(String command, String params) {
@@ -70,7 +74,6 @@ public class StockConnectionManager {
 	        
 	        pout.println(username + " " + password);
 	        String commandString = command + " " + (params == null ? "" : params);
-	        System.out.println(commandString);
 	        pout.println(commandString);
 	        pout.println(CLOSE_CONNECTION);
 	        pout.flush();
@@ -79,6 +82,7 @@ public class StockConnectionManager {
 	        String line;
 	        
 	        while((line = bin.readLine()) != null) {
+	        	System.out.println("Line: "+line);
 	        	text += line + "\n";
 	        }
 	
@@ -94,8 +98,10 @@ public class StockConnectionManager {
     	return null;
     }
 
-    public double getCash() {
-    	return 1;
+    public BigDecimal getCash() {
+    	String result = sendCommand(MY_CASH, null);
+    	System.out.println(result);
+    	return new BigDecimal(result.trim().split(" ")[1]);
     }
 
     public String[] getTickers()  {
@@ -173,10 +179,14 @@ public class StockConnectionManager {
     	return companies;
     }
     
-    public String bidCompany(String ticker, BigDecimal ammount, long stocks) {
-		System.out.println("BID TO " + ticker + " WITH AMMOUNT " + ammount + "x" + stocks);
-    	String result = sendCommand(BID, ticker + " " + ammount.toString() + " " +stocks);
-    	System.out.println(result);
+    public String bidCompany(String ticker, BigDecimal price, long stocks) {
+    	String result = sendCommand(BID, ticker + " " + price.toString() + " " + stocks);
     	return result;
     }
+    
+    public String askCompany(String ticker, BigDecimal price, long stocks) {
+    	String result = sendCommand(ASK, ticker + " " + price.toString() + " " + stocks);
+    	return result;
+    }
+    
 }
